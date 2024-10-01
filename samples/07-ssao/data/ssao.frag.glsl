@@ -2,7 +2,7 @@
 
 precision highp float;
 
-layout(location = 0) in vec3 v_position;
+layout(location = 0) in vec4 v_view_position;
 layout(location = 1) in vec3 v_world_position;
 layout(location = 2) in vec3 v_world_normal;
 layout(location = 3) in vec3 v_world_tangent;
@@ -45,28 +45,29 @@ vec3 random_unit_vector_on_hemisphere(inout uint rng_state, vec3 normal) {
     }
 }
 
+#define NUM_SAMPLES 10
+#define SSAO_BIAS 0.00005
+#define SSAO_RADIUS 0.01
+
 void main() {
     uint rng_state = uint(gl_FragCoord.x) * 984894 + uint(gl_FragCoord.y) * 184147;
 
     vec3 normal = normalize(v_world_normal);
-    // vec3 tangent = normalize(v_world_tangent);
-    // tangent = normalize(tangent - dot(tangent, normal) * normal);
-    // vec3 bitangent = cross(tangent, normal);
-    // mat3 tbn_matrix = mat3(tangent, bitangent, normal);
 
-    // vec3 random_direction = random_unit_vector_on_hemisphere(rng_state, normal);
-    vec3 random_direction = random_unit_vector(rng_state);
-    vec3 new_pos = v_world_position + random_direction;
+    vec3 view_pos = v_view_position.xyz / v_view_position.w;
+    view_pos = view_pos * 0.5 + 0.5;
 
     float occlusion = 0.0;
-    for (int i = 0; i < 10; i++) {
-        float depth = gl_FragCoord.z;
-        occlusion += new_pos.z > depth ? 1.0 : 0.0;
-    }
-    occlusion /= 10.0;
+    for (int i = 0; i < NUM_SAMPLES; i++) {
+        vec3 random_direction = random_unit_vector_on_hemisphere(rng_state, normal);
 
-    // o_color = vec4(vec3(normal), 1.0);
-    // o_color = vec4(vec3(texture(u_sampler_depth, gl_FragCoord.xy).x) / 3.0, 1.0);
-    vec2 uv = gl_FragCoord.xy / vec2(textureSize(u_sampler_depth, 0));
-    o_color = vec4(uv, 0.0, 1.0);
+        vec3 sample_pos = view_pos + random_direction * SSAO_RADIUS;
+
+        float sample_depth = texture(u_sampler_depth, sample_pos.xy).x;
+
+        occlusion += view_pos.z > sample_depth + SSAO_BIAS ? 1.0 : 0.0;
+    }
+    occlusion /= NUM_SAMPLES;
+
+    o_color = vec4(vec3(1.0 - occlusion), 1.0);
 }

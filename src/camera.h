@@ -42,6 +42,7 @@ struct Camera {
     Vec3 m_orbit_target = Vec3(0, 0, 0);
     f32 m_orbit_rotate_sensitivity = 0.006f;
     f32 m_orbit_pan_sensitivity = 0.02f;
+    f32 m_orbit_zoom_sensitivity = 0.005f;
     f32 m_orbit_zoom = 5.0f;
     Vec2 m_orbit_spherical_angles = Vec2(f32(PI_HALF), 0);
     bool m_mouse_left_pressed = false;
