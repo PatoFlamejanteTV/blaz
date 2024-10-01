@@ -1,0 +1,76 @@
+#include "error.h"
+#include "game.h"
+#include "logger.h"
+#include "mesh.h"
+
+using namespace blaz;
+
+int main() {
+    Window window;
+    Error err = window.init("07-ssao");
+    if (err) {
+        logger.error(err);
+        return 1;
+    }
+
+    Renderer renderer;
+    err = renderer.init(&window);
+    if (err) {
+        logger.error(err);
+        return 1;
+    }
+
+    Scene scene;
+    init_scene(&scene);
+
+    Game game;
+    game.m_window = &window;
+    game.m_renderer = &renderer;
+    game.m_scene = &scene;
+    err = game.load_game("data/game.cfg");
+    if (err) {
+        logger.error(err);
+    }
+
+    game.main_camera->m_orbit_pan_sensitivity = 0.005f;
+    game.main_camera->m_orbit_target = Vec3(4.04385090, 7.46749878, -2.16317248);
+    game.main_camera->m_orbit_spherical_angles = Vec2(2.89679337, 0.197398603);
+
+    window.m_mouse_click_callback = [&game](Vec2I mouse_position, ButtonState left_button,
+                                            ButtonState right_button) {
+        if (left_button == ButtonState::PRESSED) {
+            game.main_camera->m_mouse_left_pressed = true;
+        } else if (left_button == ButtonState::RELEASED) {
+            game.main_camera->m_mouse_left_pressed = false;
+        }
+
+        if (right_button == ButtonState::PRESSED) {
+            game.main_camera->m_mouse_right_pressed = true;
+        } else if (right_button == ButtonState::RELEASED) {
+            game.main_camera->m_mouse_right_pressed = false;
+        }
+    };
+
+    window.m_mouse_move_raw_callback = [&game](Vec2I delta) {
+        game.main_camera->orbit_mouse_move(delta);
+    };
+
+    window.m_mouse_wheel_callback = [&game](i16 delta) {
+        game.main_camera->orbit_mouse_wheel(delta);
+    };
+
+    game.main_camera->update_orbit_camera();
+
+    game.m_main_loop = [&game]() {
+        if (game.m_window->event_loop()) {
+            game.m_renderer->update();
+
+            return true;
+        }
+        return false;
+    };
+
+    game.run();
+
+    return 0;
+}
