@@ -9,6 +9,12 @@ layout(location = 3) in vec3 v_world_tangent;
 
 layout(location = 0) out vec4 o_color;
 
+layout(std140, binding = 0) uniform u_mat {
+    mat4 u_model_mat;
+    mat4 u_view_mat;
+    mat4 u_projection_mat;
+};
+
 layout(binding = 1) uniform sampler2D u_sampler_depth;
 
 uint next_random(inout uint rng_state) {
@@ -45,9 +51,15 @@ vec3 random_unit_vector_on_hemisphere(inout uint rng_state, vec3 normal) {
     }
 }
 
-#define NUM_SAMPLES 10
+float linearize_depth(float depth) {
+    float z_near = 0.1;
+    float z_far = 2000.0;
+    return (2.0 * z_near) / (z_far + z_near - depth * (z_far - z_near));
+}
+
+#define NUM_SAMPLES 64
 #define SSAO_BIAS 0.00005
-#define SSAO_RADIUS 0.01
+#define SSAO_RADIUS 0.05
 
 void main() {
     uint rng_state = uint(gl_FragCoord.x) * 984894 + uint(gl_FragCoord.y) * 184147;
@@ -61,13 +73,36 @@ void main() {
     for (int i = 0; i < NUM_SAMPLES; i++) {
         vec3 random_direction = random_unit_vector_on_hemisphere(rng_state, normal);
 
-        vec3 sample_pos = view_pos + random_direction * SSAO_RADIUS;
+        vec3 world_space_rand = v_world_position + random_direction * SSAO_RADIUS;
 
-        float sample_depth = texture(u_sampler_depth, sample_pos.xy).x;
+        vec4 view_space_rand_proj = (u_projection_mat * u_view_mat * vec4(world_space_rand, 1.0));
+        vec3 view_space_rand = view_space_rand_proj.xyz / view_space_rand_proj.w;
+        view_space_rand = view_space_rand * 0.5 + 0.5;
+
+        float sample_depth = texture(u_sampler_depth, view_space_rand.xy).x;
 
         occlusion += view_pos.z > sample_depth + SSAO_BIAS ? 1.0 : 0.0;
     }
     occlusion /= NUM_SAMPLES;
 
     o_color = vec4(vec3(1.0 - occlusion), 1.0);
+    //     vec3 world_position = vec3(u_model_mat * vec4(a_position, 1.0));
+    // v_world_position = world_position;
+    // gl_Position = u_projection_mat * u_view_mat * vec4(world_position, 1.0);
+    // v_view_position = (u_projection_mat * u_view_mat * vec4(world_position, 1.0));
+    // mat3 inv_model = mat3(transpose(inverse(u_model_mat)));
+    // v_world_normal = inv_model * a_normal;
+    // v_world_tangent = inv_model * a_tangent;
+
+    // vec3 random_direction = random_unit_vector_on_hemisphere(rng_state, normal);
+
+    // vec3 world_pos_rand_dir = v_world_position + random_direction * SSAO_RADIUS;
+
+    // vec4 view_pos_rand_dir_4 = (u_projection_mat * u_view_mat * vec4(world_pos_rand_dir, 1.0));
+    // vec3 view_pos_rand_dir = view_pos_rand_dir_4.xyz / view_pos_rand_dir_4.w;
+    // view_pos_rand_dir = view_pos_rand_dir * 0.5 + 0.5;
+
+    // // vec2 sample_pos = view_pos.xy;
+    // vec2 sample_pos = view_pos_rand_dir.xy;
+    // o_color = vec4(vec3(linearize_depth(texture(u_sampler_depth, sample_pos).x) * 100.0), 1.0);
 }

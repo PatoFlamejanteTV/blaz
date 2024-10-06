@@ -32,10 +32,13 @@ int main() {
         logger.error(err);
     }
 
-    game.main_camera->m_orbit_zoom_sensitivity = 0.01f;
-    game.main_camera->m_orbit_pan_sensitivity = 0.05f;
-    game.main_camera->m_orbit_target = Vec3(4.04385090, 7.46749878, -2.16317248);
-    game.main_camera->m_orbit_spherical_angles = Vec2(2.89679337, 0.197398603);
+    make_cube(&renderer.m_meshes["cube_mesh"]);
+    make_plane(&renderer.m_meshes["plane_mesh"]);
+
+    // game.main_camera->m_orbit_zoom_sensitivity = 0.01f;
+    // game.main_camera->m_orbit_pan_sensitivity = 0.05f;
+    // game.main_camera->m_orbit_target = Vec3(4.04385090, 7.46749878, -2.16317248);
+    // game.main_camera->m_orbit_spherical_angles = Vec2(2.89679337, 0.197398603);
 
     window.m_mouse_click_callback = [&game](Vec2I mouse_position, ButtonState left_button,
                                             ButtonState right_button) {
